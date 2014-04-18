@@ -328,10 +328,14 @@ WebSocketClient.register_cmd(GetRestaurantCmd, type='auth') # Get restaurant, al
 WebSocketClient.register_cmd(UpdateRestaurantCmd, type='auth') # Update restaurant
 # Dishe
 WebSocketClient.register_cmd(GetDisheCmd, type='auth') # Get dishe by
-WebSocketClient.register_cmd(AddDisheCmd, type='auth') # Add dishe
+WebSocketClient.register_cmd(CreateDisheCmd, type='auth') # Add dishe
 WebSocketClient.register_cmd(UpdateDisheCmd, type='auth')
 WebSocketClient.register_cmd(DeleteDisheCmd, type='auth')
-
+# Reservations
+WebSocketClient.register_cmd(GetReservationCmd, type='auth')
+WebSocketClient.register_cmd(UpdateReservationCmd, type='auth')
+WebSocketClient.register_cmd(CreateReservationCmd, type='auth')
+WebSocketClient.register_cmd(DeleteReservationCmd, type='auth')
 
 def start():
     application = tornado.web.Application([

@@ -388,9 +388,9 @@ class GetDisheCmd(WebSocketCmd):
     def process(self):
         self.pre_process()
 
-# ADD
-class AddDisheCmd(WebSocketCmd):
-    cmd_name = "dishe_add"
+# CREATE
+class CreateDisheCmd(WebSocketCmd):
+    cmd_name = "dishe_create"
 
     delayed_process = False
 
@@ -515,3 +515,158 @@ class DeleteDisheCmd(WebSocketCmd):
 
     def process(self):
         self.pre_process()
+
+
+## Reservation
+# GET
+class GetReservationCmd(WebSocketCmd):
+    cmd_name = "reservation_get"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        client = get_restouser(self.django_user)
+        if self.data.get('id'):
+            try:
+                reservations = client.reservation_set.get(id=self.data['id'])
+                reservations_ser = ReservationSerializer(reservations)
+            except Reservation.DoesNotExist:
+                self.error = "Reservation not found."
+                return
+        else:
+            reservations = client.reservation_set.all()
+            reservations_ser = ReservationSerializer(reservations, many=True)
+        self.answer = {"reservations": reservations_ser.data}
+
+    def process(self):
+        self.pre_process()
+
+# CREATE
+class CreateReservationCmd(WebSocketCmd):
+    cmd_name = "reservation_create"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        client = get_restouser(self.django_user)
+        if not self.data.get('restaurant_id'):
+            self.error = "Missing restaurant id."
+            return
+        try:
+            restaurant = Restaurant.objects.get(id=self.data['restaurant_id'])
+        except Restaurant.DoesNotExist:
+            self.error = "Restaurant not found."
+            return
+        if not self.data.get('time_start'):
+            self.error = "Missing reservation date."
+            return
+        if not self.data.get('people_count'):
+            self.error = "Missing people count."
+            return
+
+        reservation = Reservation(client=client,
+                                  restaurant=restaurant,
+                                  time_start=self.data['time_start'],
+                                  people_count=self.data['people_count'])
+        reservation.save()
+        reservation_ser = ReservationSerializer(reservation)
+        self.answer = {"reservation": reservation_ser.data}
+
+    def process(self):
+        self.pre_process()
+
+# UPDATE
+class UpdateReservationCmd(WebSocketCmd):
+    cmd_name = "reservation_update"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        client = get_restouser(self.django_user)
+        if not self.data.get('id'):
+            self.error = "Missing reservation id."
+            return
+
+        try:
+            reservation = Reservation.objects.get(id=self.data['id'],
+                                                  client=client)
+        except Reservation.DoesNotExist:
+            try:
+                reservation = Reservation.objects.get(id=self.data['id'], restaurant__owner=client)
+            except Reservation.DoesNotExist:
+                self.error = "Reservation not found."
+                return
+        if reservation.status != 0: # 0 = pending
+            self.error = "Reservation already validated. Please directly call the restaurant."
+            return
+
+        if self.data.get('time_start'):
+            reservation.time_start = self.data['time_start']
+        if self.data.get('people_count'):
+            reservation.people_count = self.data['people_count']
+
+        if reservation.restaurant.owner == client and self.data.get('status'):
+            reservation.status = self.data['status']
+
+        reservation.save()
+
+        reservation_ser = ReservationSerializer(reservation)
+        self.answer = {"reservation": reservation_ser.data}
+
+    def process(self):
+        self.pre_process()
+
+
+# DELETE
+class DeleteReservationCmd(WebSocketCmd):
+    cmd_name = "reservation_delete"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        client = get_restouser(self.django_user)
+        if not self.data.get('id'):
+            self.error = "Missing restaurant id."
+            return
+
+        try:
+            reservation = Reservation.objects.get(id=self.data['id'],
+                                                  client=client)
+        except Reservation.DoesNotExist:
+            try:
+                reservation = Reservation.objects.get(id=self.data['id'], restaurant__owner=client)
+            except Reservation.DoesNotExist:
+                self.error = "Reservation not found."
+                return
+
+        reservation.delete()
+
+        self.answer = {"reservation": None}
+
+    def process(self):
+        self.pre_process()
+

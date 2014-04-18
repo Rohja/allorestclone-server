@@ -26,7 +26,6 @@ class RestoUser(models.Model):
     friends = models.ManyToManyField("self", verbose_name="Friends", blank=True, null=True)
 
     def __str__(self):
-        print "============================> ", dir(self)
         return "%s - %s" % (self.user, self.phone)
 
     def get_username(self):
@@ -84,7 +83,7 @@ class Reservation(models.Model):
     created_on = models.DateTimeField(auto_now_add=True, verbose_name="Reservation took on")
     time_start = models.DateTimeField(verbose_name="Reservation for")
     people_count = models.PositiveIntegerField(verbose_name="People count")
-    orders = models.ManyToManyField("Order", verbose_name="Orders")
+    orders = models.ManyToManyField("Order", verbose_name="Orders", blank=True, null=True)
     status = models.IntegerField(verbose_name="Status", choices=STATUS_COMMANDS, default=STATUS_PENDING)
 
     def __str__(self):
