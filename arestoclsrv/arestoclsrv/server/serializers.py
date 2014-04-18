@@ -11,9 +11,12 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class RestoUserSerializer(serializers.ModelSerializer):
+    username = serializers.Field(source='get_username')
+    email = serializers.Field(source='get_email')
+
     class Meta:
         model = RestoUser
-        fields = ('id', 'phone', 'user', 'friends')
+        fields = ('id', 'username', 'email', 'phone', 'friends')
 
 
 class RestaurantSerializer(serializers.ModelSerializer):

@@ -15,6 +15,7 @@ class WebSocketCmd():
     filter = None
     # Answer to the command
     answer = None
+    error = None
     # Send cmd to queu before processing it.
     delayed_process = True
     # If the command need to be registred in the cmd pool for late processing.
@@ -50,6 +51,11 @@ class WebSocketCmd():
         :rtype: bool.
         """
         if self.answer:
+            return True
+        return False
+
+    def has_error(self):
+        if self.error:
             return True
         return False
 

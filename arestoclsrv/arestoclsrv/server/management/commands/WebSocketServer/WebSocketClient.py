@@ -203,6 +203,22 @@ class WebSocketClient(websocket.WebSocketHandler):
             return None
         return ack_json
 
+    def _gen_ans_message2(self, cmd, id, type, msg):
+        ack = self._gen_ack(cmd, id, to_message=False)
+        ack_cmd = ack['ack']
+        del ack['ack']
+        ack['ans'] = ack_cmd
+        ack["msg_type"] = str(type)
+        ack["msg_text"] = str(msg)
+        try:
+            ack_json = json.dumps(ack)
+        except ValueError:
+            print "WebSocketClient._gen_ack_message(): self = %s" % self
+            print " -- BAD JSON CONTENT TO DUMPS"
+            return None
+        return ack_json
+
+
     def open(self):
         """
         Called on client connection.
@@ -243,11 +259,11 @@ class WebSocketClient(websocket.WebSocketHandler):
         #
         #
         if cmd_instance.has_answer():
-            cmd_instance.need_register = False
             print " -- cmd_instance.answer: ", cmd_instance.answer
             self._send_message(self._gen_ans(cmd_instance))
-        if cmd_instance.need_register:
-            print " -- Need to register CMD INSTANCE for late process !"
+        elif cmd_instance.has_error():
+            print " -- cmd_instance.error: ", cmd_instance.error
+            self._send_message(self._gen_ans_message2(cmd_name, cmd_instance.cmd_id, "error", cmd_instance.error))
 
     def _find_command(self, cmd_name):
         print "ALL:", self.__class__.cmd_list['all']
@@ -297,6 +313,7 @@ WebSocketClient.register_cmd(WebSocketEchoCmd)
 WebSocketClient.register_cmd(WebSocketUserlistCmd)
 # Resto
 WebSocketClient.register_cmd(AuthUsersCmd) # Auth user & get profile
+WebSocketClient.register_cmd(CreateUserCmd) # Create user
 WebSocketClient.register_cmd(GetRestoUsersCmd, type='auth') # Get RestoUser profile
 
 def start():

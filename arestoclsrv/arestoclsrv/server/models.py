@@ -28,6 +28,11 @@ class RestoUser(models.Model):
     def __str__(self):
         return "%s - %s" % (self.user, self.phone)
 
+    def get_username(self):
+        return self.user.username
+    
+    def get_email(self):
+        return self.user.email
 
 class Restaurant(models.Model):
     '''
