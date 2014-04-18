@@ -14,6 +14,7 @@ import colander
 from WebSocketClientManager import WebSocketClientManager
 from WebSocketCommand import *
 #
+from RestoCommands import *
 
 class WebSocketClient(websocket.WebSocketHandler):
     """
@@ -266,6 +267,9 @@ class WebSocketClient(websocket.WebSocketHandler):
         self.__webSocketClientManager.remove_instance(self)
 
 WebSocketClient.register_cmd(WebSocketEchoCmd)
+WebSocketClient.register_cmd(WebSocketUserlistCmd)
+# Resto
+WebSocketClient.register_cmd(GetRestoUsersCmd)
 
 def start():
     application = tornado.web.Application([

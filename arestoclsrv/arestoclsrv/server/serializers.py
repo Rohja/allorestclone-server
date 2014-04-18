@@ -10,39 +10,45 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
                   'email', 'groups')
 
 
-class RestaurantSerializer(serializers.HyperlinkedModelSerializer):
+class RestoUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RestoUser
+        fields = ('id', 'phone', 'user', 'friends')
+
+
+class RestaurantSerializer(serializers.ModelSerializer):
     class Meta:
         model = Restaurant
         fields = ('id', 'user', 'name', 'description')
 
 
-class RestaurantTableSerializer(serializers.HyperlinkedModelSerializer):
+class RestaurantTableSerializer(serializers.ModelSerializer):
     class Meta:
         model = RestaurantTable
         fields = ('id', 'restaurant', 'count', 'note')
 
 
-class DisheSerializer(serializers.HyperlinkedModelSerializer):
+class DisheSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dishe
         fields = ('id', 'restaurant', 'name',
                   'description', 'price', 'is_speciality')
 
 
-class ReservationSerializer(serializers.HyperlinkedModelSerializer):
+class ReservationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reservation
         fields = ('id', 'user', 'restaurant', 'created_on',
                   'time_start', 'people_count')
 
 
-class ReservationInvitationSerializer(serializers.HyperlinkedModelSerializer):
+class ReservationInvitationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReservationInvitation
         fields = ('id', 'host', 'guest', 'reservation')
 
 
-class OrderSerializer(serializers.HyperlinkedModelSerializer):
+class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ('id', 'dishe', 'status')

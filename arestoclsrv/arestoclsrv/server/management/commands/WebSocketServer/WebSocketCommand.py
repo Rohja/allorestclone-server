@@ -116,4 +116,3 @@ class WebSocketUserlistCmd(WebSocketCmd):
 
     def process(self):
         self.pre_process()
-
