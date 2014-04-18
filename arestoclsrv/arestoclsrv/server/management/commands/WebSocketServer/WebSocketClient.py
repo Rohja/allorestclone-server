@@ -4,6 +4,7 @@
 import json
 import time
 import md5
+import copy
 # Libs
 import tornado.httpserver
 from tornado import websocket
@@ -21,6 +22,7 @@ class WebSocketClient(websocket.WebSocketHandler):
     WebSocketClient represent a user connected to the WebSocket server of Node Manager.
     """
     cmd_list = {} # {"intel": WebSocketIntelCmd, ... }
+    django_user = None
 
     def __init__(self, *argv, **kwargs):
         """
@@ -28,13 +30,12 @@ class WebSocketClient(websocket.WebSocketHandler):
         """
         print "WebSocketClient.__init__(): self = %s" % self
         super(WebSocketClient, self).__init__(*argv, **kwargs)
-        self.__webSocketClientManager = WebSocketClientManager.instance()
 
     def __unicode__(self):
         return u"%s" % self
 
     @classmethod
-    def register_cmd(cls, cmdclass):
+    def register_cmd(cls, cmdclass, type='all'):
         """
         Register command to the class. (Add cmd name and cmd object to cls.cmd_list.
         :param cmdname: Name of the command.
@@ -47,12 +48,16 @@ class WebSocketClient(websocket.WebSocketHandler):
             print " -- %s in not a valid commmand !" % cmdname
             return
         cmdname = cmdclass.get_cmd_name()
-        if cmdname in cls.cmd_list:
+        if type not in ['all', 'auth']:
+            raise ValueError("Type can only be 'all' or 'auth'")
+        if type not in cls.cmd_list:
+            cls.cmd_list[type] = {}
+        if cmdname in cls.cmd_list[type]:
             print " -- %s already exist in cmd_list." % cmdname
-            print " -- cmd_list: ",cls.cmd_list
+            print " -- cmd_list: ",cls.cmd_list[type]
             return
-        print "-- new command (%s, %s)" % (cmdname, cmdclass)
-        cls.cmd_list[cmdname] = cmdclass
+        print "-- new command (%s, %s, %s)" % (cmdname, cmdclass, type)
+        cls.cmd_list[type][cmdname] = cmdclass
 
     def _send_message(self, message):
         """
@@ -204,8 +209,6 @@ class WebSocketClient(websocket.WebSocketHandler):
         Register itself to the WebSocketClientManager instance.
         """
         print "WebSocketClient.open(): self = %s" % self
-        self.__webSocketClientManager.add_instance(self)
-        self.__webSocketClientManager.get_instance_list()
 
     def _process_cmd(self, cmd_name, cmd_id, cmd_data):
         """
@@ -223,7 +226,8 @@ class WebSocketClient(websocket.WebSocketHandler):
         print " -- cmd_id: ", cmd_id
         print " -- cmd_data: ", cmd_data
         self._send_message(self._gen_ack(cmd_name, cmd_id))
-        cmd_instance = self.__class__.cmd_list[cmd_name](cmd_id, cmd_data, self)
+        # FIXME: Add auth. change type + method to find right cmd directory
+        cmd_instance = self._find_command(cmd_name)(cmd_id, cmd_data, self)
         try:
             cmd_instance.filter_data()
         except colander.Invalid, e:
@@ -231,12 +235,32 @@ class WebSocketClient(websocket.WebSocketHandler):
             self._send_message(self._gen_ans_message(cmd_instance, "error", "Invalid or missing parameters"))
             return
         cmd_instance.pre_process()
+        # SPECIAL CMDS
+        # Auth.
+        if cmd_name == "user_auth" and cmd_instance.raw_user:
+            self.django_user = cmd_instance.raw_user
+            print " -- INFO: USER AUTHENTICATED !"
+        #
+        #
         if cmd_instance.has_answer():
             cmd_instance.need_register = False
             print " -- cmd_instance.answer: ", cmd_instance.answer
             self._send_message(self._gen_ans(cmd_instance))
         if cmd_instance.need_register:
-            print " -- Need to register CMD INSTANCE !"
+            print " -- Need to register CMD INSTANCE for late process !"
+
+    def _find_command(self, cmd_name):
+        print "ALL:", self.__class__.cmd_list['all']
+        print "AUTH:", self.__class__.cmd_list['auth']
+        if cmd_name in self.__class__.cmd_list['all']:
+            print "CMD in ALL"
+            return self.__class__.cmd_list['all'][cmd_name]
+        print "DJANGOUSER:", self.django_user
+        if self.django_user and cmd_name in self.__class__.cmd_list['auth']:
+            print "CMD in AUTH"
+            return self.__class__.cmd_list['auth'][cmd_name]
+        print "CMD not found...."
+        return None
 
     def on_message(self, message):
         """
@@ -254,7 +278,10 @@ class WebSocketClient(websocket.WebSocketHandler):
             self._send_message(self._gen_ack_message("cmd_bad_syntax", None, "error", "Unable to deserialize message."))
         else:
             (message_command, message_data) = message_deserialized
-            if message_command not in self.__class__.cmd_list:
+            # if ((message_command not in self.__class__.cmd_list['all']) and
+            #     (self.django_user is not None
+            #      and message_commnd not in self.__class__.cmd_list['auth'])):
+            if not self._find_command(message_command):
                 self._send_message(self._gen_ack_message("cmd_unknow", None, "error", "Unknow command <%s>." % message_command))
             else:
                 command_id = self._generate_cmd_id(message_command)
@@ -264,12 +291,13 @@ class WebSocketClient(websocket.WebSocketHandler):
         """
         Delete his own intance of the WebSocketClientManager.
         """
-        self.__webSocketClientManager.remove_instance(self)
+        pass
 
 WebSocketClient.register_cmd(WebSocketEchoCmd)
 WebSocketClient.register_cmd(WebSocketUserlistCmd)
 # Resto
-WebSocketClient.register_cmd(GetRestoUsersCmd)
+WebSocketClient.register_cmd(AuthUsersCmd) # Auth user & get profile
+WebSocketClient.register_cmd(GetRestoUsersCmd, type='auth') # Get RestoUser profile
 
 def start():
     application = tornado.web.Application([

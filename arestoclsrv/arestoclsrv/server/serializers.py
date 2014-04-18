@@ -3,11 +3,11 @@ from rest_framework import serializers
 
 from models import *
 
-class UserSerializer(serializers.HyperlinkedModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'url', 'username',
-                  'email', 'groups')
+        fields = ('id', 'username',
+                  'email')
 
 
 class RestoUserSerializer(serializers.ModelSerializer):
