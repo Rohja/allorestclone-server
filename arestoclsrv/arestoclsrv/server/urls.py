@@ -9,7 +9,6 @@ router.register(r'tables', views.RestaurantViewSet)
 router.register(r'dishes', views.DisheViewSet)
 router.register(r'reservations', views.ReservationViewSet)
 router.register(r'invitations', views.ReservationInvitationViewSet)
-router.register(r'order', views.OrderEntryViewSet)
 router.register(r'orders', views.OrderViewSet)
 
 # Wire up our API using automatic URL routing.

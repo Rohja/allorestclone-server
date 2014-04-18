@@ -1,5 +1,16 @@
 from django.db import models
 
+
+STATUS_PENDING = 0
+STATUS_ACCEPTED = 1
+STATUS_CANCELED = 2
+STATUS_COMMANDS = (
+    (STATUS_PENDING, "Pending"),
+    (STATUS_ACCEPTED, "Accepted"),
+    (STATUS_CANCELED, "Canceled"),
+    )
+
+
 class RestoUser(models.Model):
     '''
     RestoUser: Extend Django user model to add phone
@@ -10,10 +21,9 @@ class RestoUser(models.Model):
     FIXME: Many address ? (ManyToManyField)
     '''
     phone = models.CharField(verbose_name="Phone number", max_length=12)
-    address = models.CharField(verbose_name="Address", max_length=100)
     # Django user
     user = models.ForeignKey('auth.User' ,verbose_name="User")
-    friends = models.ManyToManyField("self", verbose_name="Friends")
+    friends = models.ManyToManyField("self", verbose_name="Friends", blank=True, null=True)
 
     def __str__(self):
         return "%s - %s" % (self.user, self.phone)
@@ -27,6 +37,8 @@ class Restaurant(models.Model):
     user = models.OneToOneField(RestoUser, verbose_name="Owner")
     name = models.CharField(verbose_name="Name", max_length=50)
     description = models.CharField(verbose_name="Description", max_length=200)
+    address = models.CharField(verbose_name="Address", max_length=100)
+    phone = models.CharField(verbose_name="Phone number", max_length=12)
 
     def __str__(self):
         return "%s" % self.name
@@ -66,7 +78,9 @@ class Reservation(models.Model):
     created_on = models.DateTimeField(auto_now_add=True, verbose_name="Reservation took on")
     time_start = models.DateTimeField(verbose_name="Reservation for")
     people_count = models.PositiveIntegerField(verbose_name="People count")
-    
+    orders = models.ManyToManyField("Order", verbose_name="Orders")
+    status = models.IntegerField(verbose_name="Status", choices=STATUS_COMMANDS, default=STATUS_PENDING)
+
     def __str__(self):
         return "By %s at %s for %s (%d people(s))" % (self.user, self.restaurant.name, self.time_start, self.people_count)
 
@@ -79,27 +93,15 @@ class ReservationInvitation(models.Model):
     reservation = models.ForeignKey(Reservation, verbose_name="Reservation")
 
     def __str__(self):
-        return "by %s to %s at %s" % (self.host, self.guest, self.restaurant.name)
-
-
-class OrderEntry(models.Model):
-    '''
-    Order entry = Dishe + count
-    '''
-    dishe = models.ForeignKey(Dishe, verbose_name="Dishe")
-    count = models.PositiveIntegerField(verbose_name="Count")
-    status = models.CharField(max_length=20, verbose_name="Status")
-
-    def __str__(self):
-        return "%s x%d" % (self.dishe.name, self.count)
+        return "by %s to %s at %s" % (self.host, self.guest, self.reservation.restaurant.name)
 
 
 class Order(models.Model):
     '''
-    Order list for reservation.
+    Order entry = Dishe + count
     '''
-    dishes = models.ManyToManyField(OrderEntry, verbose_name="Orders")
-    reservation = models.OneToOneField(Reservation, verbose_name="Client reservation")
+    dishe = models.ForeignKey(Dishe, verbose_name="Dishe")
+    status = models.IntegerField(verbose_name="Status", choices=STATUS_COMMANDS, default=STATUS_PENDING)
 
     def __str__(self):
-        return "Orders for reservation %s" % self.reservation
+        return "%s x%d" % (self.dishe.name, self.count)

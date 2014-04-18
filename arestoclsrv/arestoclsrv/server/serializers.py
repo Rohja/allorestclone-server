@@ -42,14 +42,9 @@ class ReservationInvitationSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('id', 'host', 'guest', 'reservation')
 
 
-class OrderEntrySerializer(serializers.HyperlinkedModelSerializer):
-    class Meta:
-        model = OrderEntry
-        fields = ('id', 'dishe', 'count', 'status')
-
-
 class OrderSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Order
-        fields = ('id', 'dishes', 'reservation')
+        fields = ('id', 'dishe', 'status')
+
 

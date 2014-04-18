@@ -46,13 +46,6 @@ class ReservationInvitationViewSet(viewsets.ModelViewSet):
     queryset = ReservationInvitation.objects.all()
     serializer_class = ReservationInvitationSerializer
 
-class OrderEntryViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows users to be viewed or edited.
-    """
-    queryset = OrderEntry.objects.all()
-    serializer_class = OrderEntrySerializer
-
 class OrderViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows users to be viewed or edited.

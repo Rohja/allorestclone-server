@@ -2,12 +2,12 @@ from django.contrib import admin
 from models import *
 
 class RestoUserAdmin(admin.ModelAdmin):
-    list_display = ['user', 'phone', 'address']
+    list_display = ['user', 'phone']
 
 admin.site.register(RestoUser, RestoUserAdmin)
 
 class RestaurantAdmin(admin.ModelAdmin):
-    list_display = ['user', 'name']
+    list_display = ['user', 'name', 'address', 'phone']
 
 admin.site.register(Restaurant, RestaurantAdmin)
 
@@ -31,13 +31,7 @@ class ReservationInvitationAdmin(admin.ModelAdmin):
 
 admin.site.register(ReservationInvitation, ReservationInvitationAdmin)
 
-class OrderEntryAdmin(admin.ModelAdmin):
-    list_display = ['dishe', 'count', 'status']
-
-admin.site.register(OrderEntry, OrderEntryAdmin)
-
 class OrderAdmin(admin.ModelAdmin):
-    pass
+    list_display = ['dishe', 'status']
 
 admin.site.register(Order, OrderAdmin)
-
