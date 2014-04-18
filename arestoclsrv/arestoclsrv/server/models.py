@@ -22,10 +22,11 @@ class RestoUser(models.Model):
     '''
     phone = models.CharField(verbose_name="Phone number", max_length=12)
     # Django user
-    user = models.ForeignKey('auth.User' ,verbose_name="User")
+    user = models.OneToOneField('auth.User' ,verbose_name="User")
     friends = models.ManyToManyField("self", verbose_name="Friends", blank=True, null=True)
 
     def __str__(self):
+        print "============================> ", dir(self)
         return "%s - %s" % (self.user, self.phone)
 
     def get_username(self):

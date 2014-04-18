@@ -244,6 +244,9 @@ class WebSocketClient(websocket.WebSocketHandler):
         self._send_message(self._gen_ack(cmd_name, cmd_id))
         # FIXME: Add auth. change type + method to find right cmd directory
         cmd_instance = self._find_command(cmd_name)(cmd_id, cmd_data, self)
+        #
+        cmd_instance.django_user = self.django_user
+        #
         try:
             cmd_instance.filter_data()
         except colander.Invalid, e:
@@ -311,10 +314,24 @@ class WebSocketClient(websocket.WebSocketHandler):
 
 WebSocketClient.register_cmd(WebSocketEchoCmd)
 WebSocketClient.register_cmd(WebSocketUserlistCmd)
-# Resto
+## Resto
 WebSocketClient.register_cmd(AuthUsersCmd) # Auth user & get profile
 WebSocketClient.register_cmd(CreateUserCmd) # Create user
+# User Account
+WebSocketClient.register_cmd(UpdateUserPasswordCmd, type='auth') # Update user's password
 WebSocketClient.register_cmd(GetRestoUsersCmd, type='auth') # Get RestoUser profile
+WebSocketClient.register_cmd(UpdateRestoUserCmd, type='auth') # Update user's phone number
+# Add friend
+WebSocketClient.register_cmd(AddFriendUserCmd, type='auth') # Add friend to list
+# Restaurant
+WebSocketClient.register_cmd(GetRestaurantCmd, type='auth') # Get restaurant, all or by id
+WebSocketClient.register_cmd(UpdateRestaurantCmd, type='auth') # Update restaurant
+# Dishe
+WebSocketClient.register_cmd(GetDisheCmd, type='auth') # Get dishe by
+WebSocketClient.register_cmd(AddDisheCmd, type='auth') # Add dishe
+WebSocketClient.register_cmd(UpdateDisheCmd, type='auth')
+WebSocketClient.register_cmd(DeleteDisheCmd, type='auth')
+
 
 def start():
     application = tornado.web.Application([

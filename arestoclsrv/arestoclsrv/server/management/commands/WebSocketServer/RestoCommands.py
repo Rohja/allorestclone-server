@@ -5,6 +5,15 @@ from WebSocketCommand import WebSocketCmd
 from arestoclsrv.server.models import *
 from arestoclsrv.server.serializers import *
 
+
+def get_restouser(django_userid):
+    try:
+        user = RestoUser.objects.get(user__id=django_userid)
+    except RestoUser.DoesNotExist:
+        return None
+    return user
+
+
 # SPECIAL: AUTH
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
@@ -71,8 +80,10 @@ class CreateUserCmd(WebSocketCmd):
                 user.set_password(self.data['password'])
                 user.is_active = True
                 user.save()
-                user = UserSerializer(user)
-                self.answer = {"user": user.data}
+                user_ser = UserSerializer(user)
+                restouser = RestoUser(user=user, phone=self.data['phone'])
+                restouser.save()
+                self.answer = {"user": user_ser.data}
             else:
                 self.error = "Username already in use."
 
@@ -108,6 +119,399 @@ class GetRestoUsersCmd(WebSocketCmd):
             if user:
                 user = user.data
             self.answer = {"user": user}
+
+    def process(self):
+        self.pre_process()
+
+# UPDATE
+class UpdateUserPasswordCmd(WebSocketCmd):
+    cmd_name = "password_update"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        # self.answer = {"echo": str(time.time())}
+        if not self.django_user:
+            self.error = "Not loged in."
+            return
+        if not self.data.get('password'):
+            self.error = "No password to set."
+            return
+        id = self.django_user
+
+        try:
+            user = User.objects.get(id=id)
+        except User.DoesNotExist:
+            self.error = "User not found."
+            return
+        else:
+            user.set_password(self.data['password'])
+            user.save()
+            user_ser = UserSerializer(user)
+            self.answer = {'user': user_ser.data}
+
+    def process(self):
+        self.pre_process()
+
+class UpdateRestoUserCmd(WebSocketCmd):
+    cmd_name = "restouser_update"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        # self.answer = {"echo": str(time.time())}
+        if not self.django_user:
+            self.error = "Not loged in."
+            return
+
+        user = get_restouser(self.django_user)
+        if not user:
+            self.error = "RestoUser not found."
+            return
+
+        if not self.data.get("phone"):
+            self.error = "Nothing to update."
+            return
+
+        user.phone = self.data['phone']
+        user.save()
+        user_ser = RestoUserSerializer(user)
+        self.answer = {'user': user_ser.data}
+
+    def process(self):
+        self.pre_process()
+
+# Add friend
+class AddFriendUserCmd(WebSocketCmd):
+    cmd_name = "friend_add"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        # self.answer = {"echo": str(time.time())}
+        if not self.django_user:
+            self.error = "Not loged in."
+            return
+
+        if not self.data.get('friend_username'):
+            self.error = "You need to supply friend username."
+            return
+        else:
+            try:
+                friend = RestoUser.objects.get(user__username=self.data['friend_username'])
+            except RestoUser.DoesNotExist:
+                self.error = "Friend with providen username not found."
+                return
+
+        user = get_restouser(self.django_user)
+        if not user:
+            self.error = "RestoUser not found."
+            return
+
+        user.friends.add(friend)
+        user.save()
+        user_ser = RestoUserSerializer(user)
+        self.answer = {'user': user_ser.data}
+
+    def process(self):
+        self.pre_process()
+
+## Restaurant
+# CREATE
+
+class AddRestaurantCmd(WebSocketCmd):
+    cmd_name = "restaurant_create"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        if not self.data.get('name'):
+            self.error = "Missing name."
+            return
+        if not self.data.get('desc'):
+            self.error = "Missing description."
+            return
+        if not self.data.get('addr'):
+            self.error = "Missing address."
+            return
+        if not self.data.get('phone'):
+            self.error = "Missing phone number."
+            return
+
+        owner = get_restouser(self.django_user)
+        restaurant = Restaurant(owner=owner,
+                               name=self.data['name'],
+                               description=self.data['desc'],
+                               address=self.data['address'],
+                               phone=self.data['phone'])
+        restaurant.save()
+        restaurant_ser = RestaurantSerializer(restaurant)
+        self.answer = {'restaurant': restaurant_ser.data}
+
+    def process(self):
+        self.pre_process()
+
+# GET
+
+class GetRestaurantCmd(WebSocketCmd):
+    cmd_name = "restaurant_get"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        if self.data.get('id'):
+            try:
+                restaurants = Restaurant.objects.get(id=self.data['id'])
+                restaurant_ser = RestaurantSerializer(restaurants)
+            except Restaurant.DoesNotExist:
+                self.error = "Restaurant not found."
+                return
+        elif self.data.owner('owner'):
+            owner = get_restouser(self.django_user)
+            restaurants = Restaurant.objects.filter(owner=owner)
+            restaurant_ser = RestaurantSerializer(restaurants, many=True)                
+        else:
+            restaurants = Restaurant.objects.all()
+            restaurant_ser = RestaurantSerializer(restaurants, many=True)
+        self.answer = {'restaurant': restaurant_ser.data}
+
+    def process(self):
+        self.pre_process()
+
+# UPDATE
+
+class UpdateRestaurantCmd(WebSocketCmd):
+    cmd_name = "restaurant_update"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        if not self.data.get('id'):
+            self.error = "Missing restaurant id."
+            return
+
+        owner = get_restouser(self.data['id'])
+        try:
+            restaurant = Restaurant.objects.get(id=self.data['id'], owner=owner)
+        except Restaurant.DoesNotExist:
+            self.error = "Restaurant does not exist."
+            return
+        if self.data.get('name'):
+            restaurant.name = self.data['name']
+        if self.data.get('desc'):
+            restaurant.description = self.data['desc']
+        if self.data.get('addr'):
+            restaurant.address = self.data['addr']
+        if self.data.get('phone'):
+            restaurant.phone = self.data['phone']
+
+        restaurant.save()
+        restaurant_ser = RestaurantSerializer(restaurant)
+        self.answer = {'restaurant': restaurant_ser.data}
+
+    def process(self):
+        self.pre_process()
+
+
+## Dishe
+# GET
+
+class GetDisheCmd(WebSocketCmd):
+    cmd_name = "dishe_get"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        if not self.data.get('restaurant_id') and not self.data.get('dishe_id'):
+            self.error = "Missing restaurant id/dishe id."
+            return
+        
+        if self.data.get('restaurant_id'):
+            try:
+                restaurant = Restaurant.objects.get(id=self.data['restaurant_id'])
+                dishes = DisheSerializer(restaurant.dishe_set.all(), many=True)
+            except Restaurant.DoesNotExist:
+                self.error = "Restaurant not found."
+                return
+        elif self.data.get('dishe_id'):
+            try:
+                dishes = Dishe.objects.get(id=self.data['dishe_id'])
+                dishes = DisheSeriliser(dishes)
+            except Dishe.DoesNotExist:
+                self.error = "Dishe not found."
+                return
+
+        self.answer = {"dishes": dishes.data}
+
+    def process(self):
+        self.pre_process()
+
+# ADD
+class AddDisheCmd(WebSocketCmd):
+    cmd_name = "dishe_add"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        if not self.data.get('restaurant_id'):
+            self.error = "Missing restaurant id."
+            return
+        
+        owner = get_restouser(self.django_user)
+        try:
+            restaurant = Restaurant.objects.get(id=self.data['restaurant_id'], owner=owner)
+        except Restaurant.DoesNotExist:
+            self.error = "Restaurant not found."
+            return
+
+        if not self.data.get('name'):
+            self.error = "Missing name."
+            return
+        if not self.data.get('desc'):
+            self.error = "Missing description."
+            return
+        if not self.data.get('price'):
+            self.error = "Missing price."
+            return
+        
+        if self.data.get('speciality'):
+            spec = bool(self.data['speciality'])
+        else:
+            spec = False
+
+        dishe = Dishe(restaurant=restaurant,
+                      name=self.data['name'],
+                      description=self.data['desc'],
+                      price=self.data['price'],
+                      speciality=spec)
+        restaurant.dishe_set.add(dishe)
+        restaurant.save()
+        dishe.save()
+        dishe_ser = DisheSerializer(dishe)
+        self.answer = {"dishe": dishe.data}
+
+    def process(self):
+        self.pre_process()
+
+# UPDATE
+class UpdateDisheCmd(WebSocketCmd):
+    cmd_name = "dishe_update"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        if not self.data.get('id'):
+            self.error = "Missing dishe id."
+            return
+        
+        owner = get_restouser(self.django_user)
+        try:
+            dishe = Dishe.objects.get(id=self.data['id'], restaurant__owner=owner)
+        except Dishe.DoesNotExist:
+            self.error = "Dishe not found."
+            return
+
+        if self.data.get('name'):
+            dishe.name = self.data['name']
+        if self.data.get('desc'):
+            dishe.description = self.data['desc']
+        if not self.data.get('price'):
+            dishe.price = self.data['price']
+        
+        if self.data.get('speciality'):
+            spec = bool(self.data['speciality'])
+        else:
+            spec = False
+
+        dishe.speciality = spec
+
+        dishe.save()
+        dishe_ser = DisheSerializer(dishe)
+        self.answer = {"dishe": dishe.data}
+
+    def process(self):
+        self.pre_process()
+
+# DELETE
+class DeleteDisheCmd(WebSocketCmd):
+    cmd_name = "dishe_delete"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        if not self.data.get('id'):
+            self.error = "Missing dishe id."
+            return
+        
+        owner = get_restouser(self.django_user)
+        try:
+            dishe = Dishe.objects.get(id=self.data['id'], restaurant__owner=owner)
+        except Dishe.DoesNotExist:
+            self.error = "Dishe not found."
+            return
+
+        dishe.delete()
+        self.answer = {"dishe": None}
 
     def process(self):
         self.pre_process()
