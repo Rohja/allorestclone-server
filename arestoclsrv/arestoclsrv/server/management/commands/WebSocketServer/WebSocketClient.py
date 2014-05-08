@@ -246,6 +246,7 @@ class WebSocketClient(websocket.WebSocketHandler):
         cmd_instance = self._find_command(cmd_name)(cmd_id, cmd_data, self)
         #
         cmd_instance.django_user = self.django_user
+        print " -- django_user: ", self.django_user
         #
         try:
             cmd_instance.filter_data()
@@ -269,16 +270,10 @@ class WebSocketClient(websocket.WebSocketHandler):
             self._send_message(self._gen_ans_message2(cmd_name, cmd_instance.cmd_id, "error", cmd_instance.error))
 
     def _find_command(self, cmd_name):
-        print "ALL:", self.__class__.cmd_list['all']
-        print "AUTH:", self.__class__.cmd_list['auth']
         if cmd_name in self.__class__.cmd_list['all']:
-            print "CMD in ALL"
             return self.__class__.cmd_list['all'][cmd_name]
-        print "DJANGOUSER:", self.django_user
         if self.django_user and cmd_name in self.__class__.cmd_list['auth']:
-            print "CMD in AUTH"
             return self.__class__.cmd_list['auth'][cmd_name]
-        print "CMD not found...."
         return None
 
     def on_message(self, message):
@@ -313,7 +308,7 @@ class WebSocketClient(websocket.WebSocketHandler):
         pass
 
 WebSocketClient.register_cmd(WebSocketEchoCmd)
-WebSocketClient.register_cmd(WebSocketUserlistCmd)
+WebSocketClient.register_cmd(WebSocketUserlistCmd, type='auth')
 ## Resto
 WebSocketClient.register_cmd(AuthUsersCmd) # Auth user & get profile
 WebSocketClient.register_cmd(CreateUserCmd) # Create user
@@ -323,7 +318,9 @@ WebSocketClient.register_cmd(GetRestoUsersCmd, type='auth') # Get RestoUser prof
 WebSocketClient.register_cmd(UpdateRestoUserCmd, type='auth') # Update user's phone number
 # Add friend
 WebSocketClient.register_cmd(AddFriendUserCmd, type='auth') # Add friend to list
+WebSocketClient.register_cmd(GetFriendsUserCmd, type='auth')
 # Restaurant
+WebSocketClient.register_cmd(AddRestaurantCmd, type='auth')
 WebSocketClient.register_cmd(GetRestaurantCmd, type='auth') # Get restaurant, all or by id
 WebSocketClient.register_cmd(UpdateRestaurantCmd, type='auth') # Update restaurant
 # Dishe
@@ -336,6 +333,10 @@ WebSocketClient.register_cmd(GetReservationCmd, type='auth')
 WebSocketClient.register_cmd(UpdateReservationCmd, type='auth')
 WebSocketClient.register_cmd(CreateReservationCmd, type='auth')
 WebSocketClient.register_cmd(DeleteReservationCmd, type='auth')
+# Order
+WebSocketClient.register_cmd(CreateOrderCmd, type='auth')
+WebSocketClient.register_cmd(GetOrdersCmd, type='auth')
+WebSocketClient.register_cmd(DeleteOrdersCmd, type='auth')
 
 def start():
     application = tornado.web.Application([

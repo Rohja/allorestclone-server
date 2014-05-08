@@ -89,6 +89,12 @@ class Reservation(models.Model):
     def __str__(self):
         return "By %s at %s for %s (%d people(s))" % (self.user, self.restaurant.name, self.time_start, self.people_count)
 
+    def get_time_start(self):
+        return str(self.time_start)
+
+    def get_created_on(self):
+        return str(self.created_on)
+
 class ReservationInvitation(models.Model):
     '''
     Invitation for a reservation between two users.

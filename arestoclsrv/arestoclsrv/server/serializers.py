@@ -41,6 +41,9 @@ class DisheSerializer(serializers.ModelSerializer):
 
 
 class ReservationSerializer(serializers.ModelSerializer):
+    time_start = serializers.Field(source='get_time_start')
+    created_on = serializers.Field(source='get_created_on')
+
     class Meta:
         model = Reservation
         fields = ('id', 'user', 'restaurant', 'created_on',

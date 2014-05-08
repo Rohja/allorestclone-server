@@ -8,7 +8,7 @@ from arestoclsrv.server.serializers import *
 
 def get_restouser(django_userid):
     try:
-        user = RestoUser.objects.get(user__id=django_userid)
+        user = RestoUser.objects.get(user__id=django_userid.id)
     except RestoUser.DoesNotExist:
         return None
     return user
@@ -17,6 +17,8 @@ def get_restouser(django_userid):
 # SPECIAL: AUTH
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
+
+import datetime
 
 class AuthUsersCmd(WebSocketCmd):
     """
@@ -111,13 +113,17 @@ class GetRestoUsersCmd(WebSocketCmd):
             self.error = "Missing user id."
         else:
             try:
-                user = RestoUser.objects.get(id=self.data['id'])
-            except RestoUser.DoesNotExist:
+                d_user = User.objects.get(id=self.django_user.id)
+            except User.DoesNotExist:
                 user = None
             else:
-                user = RestoUserSerializer(user)
-            if user:
-                user = user.data
+                try:
+                    user = RestoUser.objects.get(user=d_user)
+                except RestoUser.DoesNotExist:
+                    user = None
+                else:
+                    user = RestoUserSerializer(user)
+                    user = user.data
             self.answer = {"user": user}
 
     def process(self):
@@ -143,7 +149,7 @@ class UpdateUserPasswordCmd(WebSocketCmd):
         if not self.data.get('password'):
             self.error = "No password to set."
             return
-        id = self.django_user
+        id = self.django_user.id
 
         try:
             user = User.objects.get(id=id)
@@ -216,7 +222,13 @@ class AddFriendUserCmd(WebSocketCmd):
             return
         else:
             try:
-                friend = RestoUser.objects.get(user__username=self.data['friend_username'])
+                user_f = User.objects.get(username=self.data['friend_username'])
+            except User.DoesNotExist:
+                self.error = "Friend with providen username not found."
+                return
+
+            try:
+                friend = RestoUser.objects.get(user=user_f)
             except RestoUser.DoesNotExist:
                 self.error = "Friend with providen username not found."
                 return
@@ -233,6 +245,37 @@ class AddFriendUserCmd(WebSocketCmd):
 
     def process(self):
         self.pre_process()
+
+# Friends get
+class GetFriendsUserCmd(WebSocketCmd):
+    cmd_name = "friends_get"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        # self.answer = {"echo": str(time.time())}
+        if not self.django_user:
+            self.error = "Not loged in."
+            return
+
+        user = get_restouser(self.django_user)
+        if not user:
+            self.error = "RestoUser not found."
+            return
+
+        friends =user.friends.all()
+        friends_ser = RestoUserSerializer(friends, many=True)
+        self.answer = {'friends': friends_ser.data}
+
+    def process(self):
+        self.pre_process()
+
 
 ## Restaurant
 # CREATE
@@ -296,7 +339,7 @@ class GetRestaurantCmd(WebSocketCmd):
             except Restaurant.DoesNotExist:
                 self.error = "Restaurant not found."
                 return
-        elif self.data.owner('owner'):
+        elif self.data.get('owner'):
             owner = get_restouser(self.django_user)
             restaurants = Restaurant.objects.filter(owner=owner)
             restaurant_ser = RestaurantSerializer(restaurants, many=True)                
@@ -576,10 +619,10 @@ class CreateReservationCmd(WebSocketCmd):
             self.error = "Missing people count."
             return
 
-        reservation = Reservation(client=client,
+        reservation = Reservation(user=client,
                                   restaurant=restaurant,
-                                  time_start=self.data['time_start'],
-                                  people_count=self.data['people_count'])
+                                  time_start=datetime.datetime.strptime(self.data['time_start'], "%Y-%m-%d %H:%M:%S.%f"),
+                                  people_count=int(self.data['people_count']))
         reservation.save()
         reservation_ser = ReservationSerializer(reservation)
         self.answer = {"reservation": reservation_ser.data}
@@ -607,7 +650,7 @@ class UpdateReservationCmd(WebSocketCmd):
 
         try:
             reservation = Reservation.objects.get(id=self.data['id'],
-                                                  client=client)
+                                                  user=client)
         except Reservation.DoesNotExist:
             try:
                 reservation = Reservation.objects.get(id=self.data['id'], restaurant__owner=client)
@@ -655,7 +698,7 @@ class DeleteReservationCmd(WebSocketCmd):
 
         try:
             reservation = Reservation.objects.get(id=self.data['id'],
-                                                  client=client)
+                                                  user=client)
         except Reservation.DoesNotExist:
             try:
                 reservation = Reservation.objects.get(id=self.data['id'], restaurant__owner=client)
@@ -670,3 +713,121 @@ class DeleteReservationCmd(WebSocketCmd):
     def process(self):
         self.pre_process()
 
+# Order
+# CREATE
+class CreateOrderCmd(WebSocketCmd):
+    cmd_name = "order_create"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        client = get_restouser(self.django_user)
+        if not self.data.get('reservation_id'):
+            self.error = "Missing reservation id."
+            return
+        try:
+            reservation = Reservation.objects.get(user=client,
+                                                  id=int(self.data['reservation_id']))
+        except Reservation.DoesNotExist:
+            self.error = "Reservation not found."
+            return
+
+        if not self.data.get('dishe_id'):
+            self.error = "Missing dishe id."
+            return
+        try:
+            dishe = Dishe.objects.get(id=int(self.data['dishe_id']),
+                                      restaurant=reservation.restaurant)
+        except Dishe.DoesNotExist:
+            self.error = "Dishe not found."
+            return
+
+        order = Order(dishe=dishe)                      
+        order.save()
+        reservation.order_set.add(order)
+        reservation.save()
+
+        order_ser = OrderSerializer(order)
+        self.answer = {'order': order_ser.data}
+
+    def process(self):
+        self.pre_process()
+
+# CREATE
+class GetOrdersCmd(WebSocketCmd):
+    cmd_name = "orders_get"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        client = get_restouser(self.django_user)
+        if not self.data.get('reservation_id'):
+            self.error = "Missing reservation id."
+            return
+        try:
+            reservation = Reservation.objects.get(user=client,
+                                                  id=int(self.data['reservation_id']))
+        except Reservation.DoesNotExist:
+            self.error = "Reservation not found."
+            return
+
+        orders = reservation.order_set.all()
+
+        orders_ser = OrderSerializer(orders)
+        self.answer = {'orders': orders_ser.data}
+
+    def process(self):
+        self.pre_process()
+
+# DELETE
+class DeleteOrdersCmd(WebSocketCmd):
+    cmd_name = "order_delete"
+
+    delayed_process = False
+
+    django_user = None
+
+    def filter_data(self):
+        # FIXME: Add colander filtering.
+        pass
+
+    def pre_process(self):
+        client = get_restouser(self.django_user)
+        if not self.data.get('reservation_id'):
+            self.error = "Missing reservation id."
+            return
+        try:
+            reservation = Reservation.objects.get(user=client,
+                                                  id=int(self.data['reservation_id']))
+        except Reservation.DoesNotExist:
+            self.error = "Reservation not found."
+            return
+
+        if not self.data.get('order_id'):
+            self.error = "Missing order id."
+            return
+        try:
+            order = Order.objects.get(id=int(self.data['order_id']),
+                                      reservation=reservation)
+            
+        except Order.DoesNotExist:
+            self.error = "Order not found."
+            return
+
+        order.delete()
+        self.answer = {'order': None}
+
+    def process(self):
+        self.pre_process()
