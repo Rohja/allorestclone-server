@@ -666,7 +666,7 @@ class UpdateReservationCmd(WebSocketCmd):
         if self.data.get('people_count'):
             reservation.people_count = self.data['people_count']
 
-        if reservation.restaurant.owner == client and self.data.get('status'):
+        if reservation.restaurant.user == client and self.data.get('status'):
             reservation.status = self.data['status']
 
         reservation.save()
@@ -750,7 +750,7 @@ class CreateOrderCmd(WebSocketCmd):
 
         order = Order(dishe=dishe)                      
         order.save()
-        reservation.order_set.add(order)
+        reservation.orders.add(order)
         reservation.save()
 
         order_ser = OrderSerializer(order)
@@ -783,7 +783,7 @@ class GetOrdersCmd(WebSocketCmd):
             self.error = "Reservation not found."
             return
 
-        orders = reservation.order_set.all()
+        orders = reservation.orders.all()
 
         orders_ser = OrderSerializer(orders)
         self.answer = {'orders': orders_ser.data}

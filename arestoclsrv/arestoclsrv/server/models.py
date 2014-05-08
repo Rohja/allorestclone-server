@@ -115,4 +115,4 @@ class Order(models.Model):
     status = models.IntegerField(verbose_name="Status", choices=STATUS_COMMANDS, default=STATUS_PENDING)
 
     def __str__(self):
-        return "%s x%d" % (self.dishe.name, self.count)
+        return "%s" % (self.dishe.name)
