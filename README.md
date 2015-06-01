@@ -3,10 +3,18 @@ allorestclone-server
 
 AlloRESTclone, a PoC of Alloresto clone made as school project for BJTU. Goal: Create it quickly, write as less code as possible, do great (?) things. *Ahah.*
 
+WARNING
+=======
+
+This repository is just an archive of some code written in less than two nights. It's not supposed to work well. It's not supposed to be maintained for any purpose...
+
+It's only for curious people.
+
 
 WOOT ?
 ======
 
+```
 (allorestclone-venv)rohja@ubuntu-template:~/BJTU/allorestclone-venv$ cd lib/python2.7/site-packages/
 (allorestclone-venv)rohja@ubuntu-template:~/BJTU/allorestclone-venv/lib/python2.7/site-packages$ ls
 backports                                            Django-1.6.4-py2.7.egg-info                tornado
@@ -15,7 +23,7 @@ colander                                             easy-install.pth           
 colander-1.0b1-py2.7.egg-info                        pip-1.1-py2.7.egg                          translationstring-1.1-py2.7.egg-info
 distribute-0.6.24-py2.7.egg                          rest_framework
 django                                               setuptools.pth
-
+```
 
 DJANGO
 ======
